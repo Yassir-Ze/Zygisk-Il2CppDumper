@@ -10,18 +10,36 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-java@v3
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: 11
         cache: gradle
-    - run: |
+    
+    - name: Show current directory structure
+      run: |
+        ls -la
+        ls -la module/src/main/cpp/ || echo "cpp folder missing"
+        cat module.gradle || echo "module.gradle missing"
+    
+    - name: Patch files
+      run: |
         chmod +x ./gradlew
         sed -i 's/moduleDescription = "/moduleDescription = "(${{ github.event.inputs.package_name }}) /g' module.gradle
         sed -i "s/com.game.packagename/${{ github.event.inputs.package_name }}/g" module/src/main/cpp/game.h
+    
+    - name: Build module
+      run: |
         ./gradlew :module:assembleRelease
+    
+    - name: Check if output exists
+      run: |
+        ls -la out/ || echo "out folder not created"
+        ls -la out/magisk_module_release/ || echo "module folder not created"
+    
     - uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: zygisk-il2cppdumper
         path: out/magisk_module_release/
